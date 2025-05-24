@@ -1,37 +1,45 @@
-use crate::GameState;
 use bevy::prelude::*;
-use bevy_asset_loader::prelude::*;
-use bevy_kira_audio::AudioSource;
 
+// This plugin loads all assets using vanilla bevy
 pub struct LoadingPlugin;
 
-/// This plugin loads all assets using [`AssetLoader`] from a third party bevy plugin
-/// Alternatively you can write the logic to load assets yourself
-/// If interested, take a look at <https://bevy-cheatbook.github.io/features/assets.html>
+// Separate the loading state from the game state
+#[derive(States, Debug, Clone, Default, Eq, PartialEq, Hash)]
+enum LoadingState {
+    #[default]
+    Loading,
+    Ready,
+}
+
+// Texture atlas layout handle
+#[derive(Resource)]
+struct RpgAtlasLayout(Handle<TextureAtlasLayout>);
+
+// Texture atlas handle
+#[derive(Resource)]
+struct RpgTextureAtlas(Handle<Image>);
+
 impl Plugin for LoadingPlugin {
     fn build(&self, app: &mut App) {
-        app.add_loading_state(
-            LoadingState::new(GameState::Loading)
-                .continue_to_state(GameState::Menu)
-                .load_collection::<AudioAssets>()
-                .load_collection::<TextureAssets>(),
-        );
+        app.init_state::<LoadingState>()
+        .add_systems(OnEnter(LoadingState::Loading), load_texture_atlas);
     }
 }
 
-// the following asset collections will be loaded during the State `GameState::Loading`
-// when done loading, they will be inserted as resources (see <https://github.com/NiklasEi/bevy_asset_loader>)
-
-#[derive(AssetCollection, Resource)]
-pub struct AudioAssets {
-    #[asset(path = "audio/flying.ogg")]
-    pub flying: Handle<AudioSource>,
-}
-
-#[derive(AssetCollection, Resource)]
-pub struct TextureAssets {
-    #[asset(path = "textures/bevy.png")]
-    pub bevy: Handle<Image>,
-    #[asset(path = "textures/github.png")]
-    pub github: Handle<Image>,
+fn load_texture_atlas(
+    asset_server: Res<AssetServer>,
+    mut asset_layout: ResMut<Assets<TextureAtlasLayout>>,
+    mut layout_res: ResMut<RpgAtlasLayout>,
+    mut texture_res: ResMut<RpgTextureAtlas>,
+) {
+    // Load the texture atlas
+    texture_res.0 = asset_server.load("assets/textures/terrain.png");
+    layout_res.0 = asset_layout.add(TextureAtlasLayout::from_grid(
+        UVec2::splat(16),
+        16,
+        16,
+        None,
+        None,
+    ));
+    info!("Texture atlas loaded.");
 }
