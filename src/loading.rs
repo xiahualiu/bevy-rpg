@@ -1,4 +1,5 @@
-use bevy::prelude::*;
+use bevy::asset::LoadState;
+use bevy::{prelude::*, ui::State};
 
 use crate::GameState;
 
@@ -17,7 +18,11 @@ impl Plugin for LoadingPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<RpgAtlasLayout>()
             .init_resource::<RpgTextureAtlas>()
-            .add_systems(OnEnter(GameState::Loading), load_texture_atlas);
+            .add_systems(OnEnter(GameState::Loading), load_texture_atlas)
+            .add_systems(
+                Update,
+                check_loading_status.run_if(in_state(GameState::Loading)),
+            );
     }
 }
 
@@ -36,5 +41,22 @@ fn load_texture_atlas(
         None,
         None,
     ));
-    info!("Texture atlas loaded.");
+    info!("Loading texture atlas.");
+}
+
+fn check_loading_status(
+    texture_res: Res<RpgTextureAtlas>,
+    mut next_state: ResMut<NextState<GameState>>,
+    asset_server: Res<AssetServer>,
+) {
+    // Check if the texture atlas is loaded
+    if asset_server.load_state(texture_res.0.id()).is_loaded() {
+        info!("Texture atlas loaded successfully.");
+    } else {
+        // If not loaded, log the loading status
+        info!("Texture atlas is still loading...");
+        return;
+    }
+    info!("All assets loaded successfully, transitioning to Running state.");
+    next_state.set(GameState::Running);
 }
