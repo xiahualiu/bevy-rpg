@@ -7,21 +7,23 @@ pub struct LoadingPlugin;
 
 // Texture atlas layout handle
 #[derive(Resource, Default)]
-struct RpgAtlasLayout(Handle<TextureAtlasLayout>);
+pub struct RpgAtlasLayout(pub Handle<TextureAtlasLayout>);
 
 // Texture atlas handle
 #[derive(Resource, Default)]
-struct RpgTextureAtlas(Handle<Image>);
+pub struct RpgTextureAtlas(pub Handle<Image>);
 
 impl Plugin for LoadingPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<RpgAtlasLayout>()
             .init_resource::<RpgTextureAtlas>()
-            .add_systems(OnEnter(GameState::Loading), load_texture_atlas)
+            .add_systems(Startup, load_texture_atlas)
             .add_systems(
                 Update,
-                check_loading_status.run_if(in_state(GameState::Loading)),
+                check_loading_status.run_if(in_state(GameState::Preparing)),
             );
+            // Debug
+            // .add_systems(OnEnter(GameState::Running), text_texture_atlas);
     }
 }
 
@@ -58,4 +60,28 @@ fn check_loading_status(
     }
     info!("All assets loaded successfully, transitioning to Running state.");
     next_state.set(GameState::Running);
+}
+
+fn text_texture_atlas(
+    mut commands: Commands,
+    texture_res: Res<RpgTextureAtlas>,
+    layout_res: Res<RpgAtlasLayout>,
+) {
+    // Create a sprite bundle using the loaded texture atlas
+    let test_sprite = Sprite::from_atlas_image(
+        texture_res.0.clone(),
+        TextureAtlas {
+            layout: layout_res.0.clone(),
+            index: 0,
+        },
+    );
+
+    let test_sprite_transform = Transform {
+        translation: Vec3::new(0.0, 0.0, 0.0), // Position in the world
+        rotation: Quat::IDENTITY,              // No rotation
+        scale: Vec3::splat(10.0),              // Uniform scale
+    };
+
+    // Spawn the sprite in the world
+    commands.spawn((test_sprite, test_sprite_transform));
 }
